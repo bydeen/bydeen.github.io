@@ -112,7 +112,7 @@ analytics:
 
 # Site Author
 author:
-  name: "Yoojin Choi (최유진)"
+  name: "Yoojin Choi 최유진"
   avatar: "/assets/images/bio-selfie.png" # path of avatar image, e.g. "/assets/images/bio-photo.jpg"
   bio: "I am an **amazing** person."
   location: "Korea, Republic of"
@@ -120,7 +120,7 @@ author:
   links:
     - label: "Email"
       icon: "fas fa-fw fa-envelope-square"
-      # url: "mailto:your.name@email.com"
+      url: "mailto:cyj@dbs.snu.ac.kr"
     - label: "Website"
       icon: "fas fa-fw fa-link"
       # url: "https://your-website.com"
