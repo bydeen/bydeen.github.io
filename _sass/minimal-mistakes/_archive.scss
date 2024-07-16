@@ -35,7 +35,7 @@
   margin: 1.414em 0 0.5em;
   padding-bottom: 0.5em;
   font-size: $type-size-5;
-  color: $muted-text-color;
+  // color: $muted-text-color;
   border-bottom: 1px solid $border-color;
 
   + .list__item .archive__item-title {
@@ -51,7 +51,7 @@
   text-overflow: ellipsis;
 
   a[rel="permalink"]::before {
-    content: '';
+    content: "";
     position: absolute;
     inset: 0;
   }
@@ -280,12 +280,13 @@
   }
 
   a.btn::before {
-    content: '';
+    content: "";
     position: absolute;
     inset: 0;
   }
 
-  &--left, &--right {
+  &--left,
+  &--right {
     position: relative;
     margin-inline: 0;
     width: 100%;
@@ -293,7 +294,7 @@
     font-size: 1.125em;
 
     a.btn::before {
-      content: '';
+      content: "";
       position: absolute;
       inset: 0;
     }
@@ -367,7 +368,7 @@
     }
 
     a.btn::before {
-      content: '';
+      content: "";
       position: absolute;
       inset: 0;
     }
@@ -425,7 +426,7 @@
 /* Place inside a single layout */
 
 .layout--single {
-	.feature__wrapper {
-		display: inline-block;
-	}
+  .feature__wrapper {
+    display: inline-block;
+  }
 }
