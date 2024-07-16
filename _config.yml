@@ -17,11 +17,11 @@ minimal_mistakes_skin: "contrast" # "air", "aqua", "contrast", "dark", "dirt", "
 # Site Settings
 locale: "en-US"
 rtl: # true, false (default) # turns direction of the page into right to left for RTL languages
-title: "Bodhi Code by Deen"
+title: "Bodhi Code"
 title_separator: "|"
 subtitle: # site tagline that appears below site title in masthead
 name: "Yoojin Choi"
-description: "Website by Deen (Under Construction...)"
+description: "Website under construction 👷‍♀️🚧"
 url: https://bydeen.github.io/ # the base hostname & protocol for your site e.g. "https://mmistakes.github.io"
 baseurl: # the subpath of your site, e.g. "/blog"
 repository: "bydeen/bydeen.github.io" # GitHub username/repo-name e.g. "mmistakes/minimal-mistakes"
