@@ -114,7 +114,7 @@ analytics:
 author:
   name: "Yoojin Choi 최유진"
   avatar: "/assets/images/bio-selfie.png" # path of avatar image, e.g. "/assets/images/bio-photo.jpg"
-  bio: "I am an **amazing** person."
+  bio: "Website under construction 👷‍♀️🚧."
   location: "Korea, Republic of"
   email:
   links:
@@ -311,5 +311,5 @@ defaults:
       author_profile: true
       read_time: true
       comments: # true
-      share: true
-      related: true
+      share: # true
+      related: # true
