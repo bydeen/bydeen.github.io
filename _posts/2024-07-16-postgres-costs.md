@@ -7,6 +7,7 @@ tags:
   - PostgreSQL
   - Query Optimization
   - Cost Estimation
+use_math: true
 ---
 
 This post assumes no parallelism is used, that is, only one worker is assigned.
