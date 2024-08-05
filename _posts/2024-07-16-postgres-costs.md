@@ -10,6 +10,8 @@ tags:
 use_math: true
 ---
 
+The foundational concepts for this analysis were derived from [The Internals of PostgreSQL](https://www.interdb.jp/pg/), which provides the basic equation for cost estimation. The detailed code analysis and organization of functions presented in this post are based on my examination of [costsize.c](https://github.com/postgres/postgres/blob/master/src/backend/optimizer/path/costsize.c).
+
 This post assumes no parallelism is used, that is, only one worker is assigned.
 
 ## Single-Table Query
@@ -57,7 +59,3 @@ $
 $
 
 ### Index Scan
-
-### References
-
-The baseline for this analysis was derived from [The Internals of PostgreSQL](https://www.interdb.jp/pg/).
