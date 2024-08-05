@@ -18,16 +18,16 @@ This post assumes no parallelism is used, that is, only one worker is assigned.
 
 ### Sequential Scan
 
-$
+$ \small
 \text{Total Cost} = \text{Startup Cost} + \text{CPU Run Cost} + \text{Disk Run Cost}
 $
 
-$
-\text{CPU Run Cost} = \text{CPU Cost per Tuple} \times N_{\text{tuples}} + \text{Output Columns Evaluation Cost per Row} \times N_{\text{rows}}
+$ \small
+\text{CPU Run Cost} = \text{CPU Cost per Tuple} \times N*{\text{tuples}} + \text{Output Columns Evaluation Cost per Row} \times N*{\text{rows}}
 $
 
-$
-\text{Disk Run Cost} = \text{Sequential Page Cost} \times N_{\text{pages}}
+$ \small
+\text{Disk Run Cost} = \text{Sequential Page Cost} \times N\_{\text{pages}}
 $
 
 ### Sample Scan
@@ -36,26 +36,26 @@ Work in progress :construction:...
 
 ### Gather
 
-$
+$ \small
 \text{Total Cost} = \text{Startup Cost} + \text{Run Cost}
 $
 
-$
-\text{Run Cost} = \text{Subpath Total Cost} - \text{Subpath Startup Cost} + \text{Parallel Tuple Cost} \times N_{\text{rows}}
+$ \small
+\text{Run Cost} = \text{Subpath Total Cost} - \text{Subpath Startup Cost} + \text{Parallel Tuple Cost} \times N\_{\text{rows}}
 $
 
 ### Gather Merge
 
-$
+$ \small
 \text{Total Cost} = \text{Startup Cost} + \text{Run Cost} + \text{Input Total Cost}
 $
 
-$
+$ \small
 \text{Startup Cost} = \text{Comparsion Cost} \times N \times \log N + \text{Parallel Setup Cost} + \text{Input Setup Cost}
 $
 
-$
-\text{Run Cost} = N_{\text{rows}} \times \text{Comparison Cost} \times \log N + \text{CPU Operator cost} \times N_{\text{rows}} + \text{Parallel Tuple Cost} \times N_{\text{rows}} \times 1.05
+$ \small
+\text{Run Cost} = N*{\text{rows}} \times \text{Comparison Cost} \times \log N + \text{CPU Operator cost} \times N*{\text{rows}} + \text{Parallel Tuple Cost} \times N\_{\text{rows}} \times 1.05
 $
 
 ### Index Scan
