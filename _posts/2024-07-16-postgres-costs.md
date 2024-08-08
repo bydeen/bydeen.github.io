@@ -59,9 +59,7 @@ The foundational concepts for this analysis were derived from [The Internals of 
 
 If a operator is disabled (i.e., `enable_xxx` is not true), PostgreSQL adds a `disable_cost` (set to 1.0e10) to the startup cost. This effectively prevents the optimizer from selecting the operator.
 
-## Single-Table Query
-
-### [Sequential Scan](https://github.com/postgres/postgres/blob/master/src/backend/optimizer/path/costsize.c#L276)
+## [Sequential Scan](https://github.com/postgres/postgres/blob/master/src/backend/optimizer/path/costsize.c#L276)
 
 Determines and returns the cost of _scanning a relation sequentially_.
 
@@ -86,18 +84,13 @@ $$
 \text{cpu_run_cost} = \text{cpu_per_tuple} \times N_{\text{tuples}} + \text{tlist_eval_per_row} \times N_{\text{output_rows}}
 $$
 
-If parallelism is used, the CPU cost is divided among all workers:
+`cpu_per_tuple` is the sum of `cpu_tuple_cost` and `qpqual_cost` per tuple.
+
+If parallelism is used, the CPU cost and the number of output row is divided among all workers:
 
 $$
 \small
-\text{cpu_run_cost} = \text{cpu_run_cost} \div \text{paraellel_divisor}
-$$
-
-The number of output rows is also adjusted for parallel processing:
-
-$$
-\small
-N_{\text{output_rows}} = N_{\text{output_rows}} \div \text{paraellel_divisor}
+\text{cpu_run_cost} = \text{cpu_run_cost} \div \text{paraellel_divisor, } N_{\text{output_rows}} = N_{\text{output_rows}} \div \text{paraellel_divisor}
 $$
 
 The disk run cost is the cost of reading the pages from disk:
@@ -107,7 +100,7 @@ $$
 \text{disk_run_cost} = \text{spc_seq_page_cost} \times N_{\text{pages}}
 $$
 
-### [Sample Scan](<(https://github.com/postgres/postgres/blob/master/src/backend/optimizer/path/costsize.c#L353)>)
+## [Sample Scan](<(https://github.com/postgres/postgres/blob/master/src/backend/optimizer/path/costsize.c#L353)>)
 
 Determines and returns the cost of _scanning a relation using sampling_.
 
@@ -138,33 +131,60 @@ More details about table sampling methods can be found in [here](https://www.pos
 
 $$ \small N\_{\text{pages}}$$ is the number of pages the sampling method will visit.
 
+## [Gather or Gather Merge](https://www.postgresql.org/docs/current/how-parallel-query-works.html)
+
+When the optimizer determines that parallel query is the fastest execution strategy for a particular query, it will create a query plan that includes a `Gather` or `Gather Merge` node.
+
 ### [Gather](https://github.com/postgres/postgres/blob/master/src/backend/optimizer/path/costsize.c#L425)
 
-$$
-\small
-\text{Total Cost} = \text{Startup Cost} + \text{Run Cost}
-$$
+Determines and returns the cost of _gather_ path.
+
+The total cost of a gather is calculated as follows:
 
 $$
 \small
-\text{Run Cost} = \text{Subpath Total Cost} - \text{Subpath Startup Cost} + \text{Parallel Tuple Cost} \times N_{\text{rows}}
+\text{total_cost} = \text{startup_cost} + \text{run_cost}
 $$
 
-### Gather Merge
-
-$$
-\small
-\text{Total Cost} = \text{Startup Cost} + \text{Run Cost} + \text{Input Total Cost}
-$$
+The startup cost includes the costs incurred before the first tuple is returned. It is calculated as:
 
 $$
 \small
-\text{Startup Cost} = \text{Comparsion Cost} \times N \times \log N + \text{Parallel Setup Cost} + \text{Input Setup Cost}
+\text{startup_cost} = \text{subpath_startup_cost} + \text{parallel_setup_cost}
 $$
+
+The run cost includes the cost of processing all tuples and the additional cost of parallel tuple communication. It is calculated as:
 
 $$
 \small
-\text{Run Cost} = N*{\text{rows}} \times \text{Comparison Cost} \times \log N + \text{CPU Operator cost} \times N*{\text{rows}} + \text{Parallel Tuple Cost} \times N_{\text{rows}} \times 1.05
+\text{run_cost} = \text{subpath_total_cost} - \text{subpath_startup_cost} + \text{parallel_tuple_cost} \times N_{\text{rows}}
 $$
 
-### Index Scan
+### [Gather Merge](https://github.com/postgres/postgres/blob/master/src/backend/optimizer/path/costsize.c#L464)
+
+Determines and returns the cost of _gather merge_ path. A `Gather Merge` merges several pre-sorted input streams using a heap that at any given instant holds the next tuple from each stream. If there are $ \small N$ streams, about $ \small N \times \log_2 N$ tuple comparisons are needed to construct the heap at startup, and for each output tuple, about $ \small \log_2 N$ comparisons are needed to replace the top heap entry with the next tuple from the same stream.
+
+The total cost of a gather merge is calculated as follows:
+
+$$
+\small
+\text{total_cost} = \text{startup_cost} + \text{run_cost} + \text{input_total_cost}
+$$
+
+The startup cost includes the costs of heap creation and parallel setup cost. It is calculated as:
+
+$$
+\small
+\text{startup_cost} = \text{comparison_cost} \times N \times \log_2 N + \text{parallel_setup_cost}
+$$
+
+$ \small N$ is the number of workers plus one to account for the leader.
+
+The run cost includes the cost of maintaining the heap per tuple,a small cost for heap management, and the communication cost. It is calculated as:
+
+$$
+\small
+\text{run_cost} = \text{rows} \times \text{comparison_cost} \times \log_2 N + \text{cpu_operator_cost} \times \text{rows} + \text{parallel_tuple_cost} \times N_{\text{rows}} * 1.05
+$$
+
+Extra 5% added to the communication cost because `Gather Merge` requires blocking until a tuple is available from every worker.
