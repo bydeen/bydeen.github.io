@@ -15,37 +15,37 @@ The foundational concepts for this analysis were derived from [The Internals of 
 ## Prelimiaries
 
 1. Path costs are measured in _arbitrary units_ defined by basic parameters.
-   | Parameter | Description |
-   | -------------------- | -------------------------------------------------------------- |
-   | `seq_page_cost` | Cost of a sequential page fetch |
-   | `random_page_cost` | Cost of a non-sequential page fetch |
-   | `cpu_tuple_cost` | Cost of typical CPU time to process a tuple |
-   | `cpu_index_tuple_cost` | Cost of typical CPU time to process an index tuple |
-   | `cpu_operator_cost` | Cost of CPU time to execute an operator or function |
-   | `parallel_tuple_cost` | Cost of CPU time to pass a tuple from worker to leader backend |
-   | `parallel_setup_cost` | Cost of setting up shared memory for parallelism |
+
+   | Parameter                | Description                                           |
+   |--------------------------|-------------------------------------------------------|
+   | `seq_page_cost`          | Cost of a sequential page fetch                       |
+   | `random_page_cost`       | Cost of a non-sequential page fetch                   |
+   | `cpu_tuple_cost`         | Cost of typical CPU time to process a tuple           |
+   | `cpu_index_tuple_cost`   | Cost of typical CPU time to process an index tuple    |
+   | `cpu_operator_cost`      | Cost of CPU time to execute an operator or function   |
+   | `parallel_tuple_cost`    | Cost of CPU time to pass a tuple from worker to leader backend |
+   | `parallel_setup_cost`    | Cost of setting up shared memory for parallelism      |
+
 
 2. PostgreSQL computes two separate costs for each path.
 
-   - `Total Cost`
-     : total estimated cost to fetch _all tuples_
-   - `Startup Cost`
-     : cost that is expended before _first tuple_ is fetched
+   - `Total Cost` : total estimated cost to fetch _all tuples_
+   - `Startup Cost` : cost that is expended before _first tuple_ is fetched
 
    When a query includes `LIMIT` clause or an `EXISTS(...)` sub-select, it is not necessary to fetch all tuples of the path's result.
    Instead, the cost of fetching a partial result can be estimated by interpolating between the startup cost and the total cost.
    This involves calculating a weighted average based on the proportion of rows expected to be fetched.
 
-   $ \small
+   $$ \small
    \text{Actual Cost} = \text{Startup Cost} +
    (\text{Total Cost} - \text{Startup Cost}) \times \frac{\text{Tuples to Fetch}}{\text{Path's Estimated Number of Result Tuples}}
-   $
+   $$
 
-   For example, consider a table scan query with a startup cost of 10 and a total cost of 100. If the query includes `LIMIT 10`, the estimated cost is calculated as follows:
+   For example, consider a table scan query with a startup cost of 10 and a total cosst of 100. If the query includes `LIMIT 10`, the estimated cost is calculated as follows:
 
-   $ \small
+   $$ \small
    10 + (100 - 10) \times \frac{10}{100} = 10 + (100 - 10) \times 0.10 = 19
-   $
+   $$
 
    The `LIMIT` clause is applied as a top-level plan node. Therefore, row counts for base relations and intermediate nodes are calculated without considering the `LIMIT` clause.
 
@@ -62,98 +62,98 @@ If a operator is disabled (i.e., `enable_xxx` is not true), PostgreSQL adds a `d
 
 ## Single-Table Query
 
-### Sequential Scan
+### [Sequential Scan](https://github.com/postgres/postgres/blob/master/src/backend/optimizer/path/costsize.c#L276)
 
 Determines and returns the cost of _scanning a relation sequentially_.
 
 The total cost of a sequential scan is calculated as follows:
 
-$ \small
+$$ \small
 \text{total\_cost} = \text{startup\_cost} + \text{cpu\_run\_cost} + \text{disk\_run\_cost}
-$
+$$
 
 The startup cost includes the costs incurred before the first tuple is returned. It is calculated as:
 
-$ \small
+$$ \small
 \text{startup\_cost} = \text{qpqual\_startup\_cost} + \text{tlist\_eval\_startup\_cost}
-$
+$$
 
 The CPU run cost is the cost of processing all tuples. It is calculated as:
 
-$ \small
+$$ \small
 \text{cpu\_run\_cost} = \text{cpu\_per\_tuple} \times N_{\text{tuples}} + \text{tlist\_eval\_per\_row} \times N_{\text{output\_rows}}
-$
+$$
 
 If parallelism is used, the CPU cost is divided among all workers:
 
-$ \small
+$$ \small
 \text{cpu\_run\_cost} = \text{cpu\_run\_cost} \div \text{paraellel\_divisor}
-$
+$$
 
 The number of output rows is also adjusted for parallel processing:
 
-$ \small
+$$ \small
 N_{\text{output\_rows}} = N_{\text{output\_rows}} \div \text{paraellel\_divisor}
-$
+$$
 
 The disk run cost is the cost of reading the pages from disk:
 
-$ \small
+$$ \small
 \text{disk\_run\_cost} = \text{spc\_seq\_page\_cost} \times N_{\text{pages}}
-$
+$$
 
 
-### Sample Scan
+### [Sample Scan]((https://github.com/postgres/postgres/blob/master/src/backend/optimizer/path/costsize.c#L353))
 
 Determines and returns the cost of _scanning a relation using sampling_.
 
 The total cost of a sample scan is calculated as follows:
 
-$ \small
+$$ \small
 \text{total\_cost} = \text{startup\_cost} + \text{run\_cost}
-$
+$$
 
 The startup cost includes the costs incurred before the first tuple is returned. It is calculated as:
 
-$ \small
+$$ \small
 \text{startup\_cost} = \text{qpqual\_startup\_cost} + \text{tlist\_eval\_startup\_cost}
-$
+$$
 
 The run cost, which includes disk and CPU costs, is calculated as:
 
-$ \small
+$$ \small
 \text{run\_cost} = \text{spc\_page\_cost} \times N_{\text{pages}} + \text{cpu\_per\_tuple} \times N_{\text{tuples}} + \text{tlist\_eval\_per\_row} \times N_{\text{output\_rows}}
-$
+$$
 
 For disk costs, `spc_page_cost` is set to `spc_random_page_cost` if `NextSampleBlock` is used, indicating random access. Ohterwise, it is set to `spc_seq_page_cost`, indicating sequential access.
 This is because the role of function `NextSampleBlock` is to return the block number of the next page to be scanned.
 More details about table sampling methods can be found in [here](https://www.postgresql.org/docs/current/tablesample-support-functions.html).
 
-$ \small N_{\text{pages}}$ is the number of pages the sampling method will visit.
+$$ \small N_{\text{pages}}$$ is the number of pages the sampling method will visit.
 
 
-### Gather
+### [Gather](https://github.com/postgres/postgres/blob/master/src/backend/optimizer/path/costsize.c#L425)
 
-$ \small
+$$ \small
 \text{Total Cost} = \text{Startup Cost} + \text{Run Cost}
-$
+$$
 
-$ \small
+$$ \small
 \text{Run Cost} = \text{Subpath Total Cost} - \text{Subpath Startup Cost} + \text{Parallel Tuple Cost} \times N\_{\text{rows}}
-$
+$$
 
 ### Gather Merge
 
-$ \small
+$$ \small
 \text{Total Cost} = \text{Startup Cost} + \text{Run Cost} + \text{Input Total Cost}
-$
+$$
 
-$ \small
+$$ \small
 \text{Startup Cost} = \text{Comparsion Cost} \times N \times \log N + \text{Parallel Setup Cost} + \text{Input Setup Cost}
-$
+$$
 
-$ \small
+$$ \small
 \text{Run Cost} = N*{\text{rows}} \times \text{Comparison Cost} \times \log N + \text{CPU Operator cost} \times N*{\text{rows}} + \text{Parallel Tuple Cost} \times N\_{\text{rows}} \times 1.05
-$
+$$
 
 ### Index Scan
