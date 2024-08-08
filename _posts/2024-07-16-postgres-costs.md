@@ -49,6 +49,13 @@ The foundational concepts for this analysis were derived from [The Internals of 
 
    The `LIMIT` clause is applied as a top-level plan node. Therefore, row counts for base relations and intermediate nodes are calculated without considering the `LIMIT` clause.
 
+3. Other commonly used parameters are:
+  - `qpqual_cost`
+  : CPU cost of evaluating the `WHERE` clause.
+  - `tlist_eval_cost`
+  : Cost of evaluating the target list expressions. The target list defines the result of the query. More details about target list can be found [here](https://www.postgresql.org/docs/current/querytree.html).
+
+
 <!-- For simplication, this post assumes no parallelism is used, that is, only one worker is assigned. -->
 
 If a operator is disabled (i.e., `enable_xxx` is not true), PostgreSQL adds a `disable_cost` (set to 1.0e10) to the startup cost. This effectively prevents the optimizer from selecting the operator.
@@ -71,9 +78,6 @@ $ \small
 \text{startup\_cost} = \text{qpqual\_startup\_cost} + \text{tlist\_eval\_startup\_cost}
 $
 
-- `qpqual_cost`: CPU cost of evaluating the `WHERE` clause.
-- `tlist_eval_cost`: Cost of evaluating the target list expressions. The target list defines the result of the query. More details can be found [here](https://www.postgresql.org/docs/current/querytree.html).
-
 The CPU run cost is the cost of processing all tuples. It is calculated as:
 
 $ \small
@@ -95,12 +99,38 @@ $
 The disk run cost is the cost of reading the pages from disk:
 
 $ \small
-\text{disk\_run\_cost} = \text{seq\_page\_cost} \times N_{\text{pages}}
+\text{disk\_run\_cost} = \text{spc\_seq\_page\_cost} \times N_{\text{pages}}
 $
+
 
 ### Sample Scan
 
-Work in progress :construction:...
+Determines and returns the cost of _scanning a relation using sampling_.
+
+The total cost of a sample scan is calculated as follows:
+
+$ \small
+\text{total\_cost} = \text{startup\_cost} + \text{run\_cost}
+$
+
+The startup cost includes the costs incurred before the first tuple is returned. It is calculated as:
+
+$ \small
+\text{startup\_cost} = \text{qpqual\_startup\_cost} + \text{tlist\_eval\_startup\_cost}
+$
+
+The run cost, which includes disk and CPU costs, is calculated as:
+
+$ \small
+\text{run\_cost} = \text{spc\_page\_cost} \times N_{\text{pages}} + \text{cpu\_per\_tuple} \times N_{\text{tuples}} + \text{tlist\_eval\_per\_row} \times N_{\text{output\_rows}}
+$
+
+For disk costs, `spc_page_cost` is set to `spc_random_page_cost` if `NextSampleBlock` is used, indicating random access. Ohterwise, it is set to `spc_seq_page_cost`, indicating sequential access.
+This is because the role of function `NextSampleBlock` is to return the block number of the next page to be scanned.
+More details about table sampling methods can be found in [here](https://www.postgresql.org/docs/current/tablesample-support-functions.html).
+
+$ \small N_{\text{pages}}$ is the number of pages the sampling method will visit.
+
 
 ### Gather
 
