@@ -209,39 +209,44 @@ $$
 \text{startup_cost} = \text{indexStartupCost} + \text{qpqual_startup_cost} + \text{tlist_eval_startup_cost}
 $$
 
-The run cost includes both disk I/O costs and CPU costs. It is calculated as:
+The run cost includes both disk I/O costs and CPU costs.
 
-$$
-\small
-\text{run_cost} = \text{indexTotalCost} - \text{indexStartupCost} + \text{max_IO_cost} + \text{csquared} \times \{\text{min_IO_cost} - \text{max_IO_cost}\} + \text{cpu_run_cost}
-$$
+First, to estimate the number of main-table pages fetched and compute the I/O cost, PostgreSQL set `max_IO_cost` and `min_IO_cost`.
 
-To estimate the number of main-table pages fetched and compute the I/O cost, PostgreSQL considers several cases:
+- `max_IO_cost`: Uncorrelated Index Ordering with Table Ordering
 
-1. Uncorrelated Index Ordering:
+  To compute $\small N_\text{pages_fetched}$, [approximation method by Mackert and Lohman](https://dl.acm.org/doi/pdf/10.1145/68012.68016) is used, which is defined in [index_pages_fetched] function(https://github.com/postgres/postgres/blob/master/src/backend/optimizer/path/costsize.c#L859). If it's an index-only scan, PostgreSQL use the measured fraction of the entire heap that is all-visible. Therefore, $\small N_\text{pages_fetched}$ is $\small N_\text{pages_fetched} = \ceil N_\text{pages_fetched} \times (1.0 - \text{allvisfrac})$. Then, `spc_random_page_cost` is charged per page fetched.
 
-- Uses the [approximation method by Mackert and Lohman](https://dl.acm.org/doi/pdf/10.1145/68012.68016), which is defined in [index_pages_fetched] function(https://github.com/postgres/postgres/blob/master/src/backend/optimizer/path/costsize.c#L859).
-
-- $$
+  $$
   \small
   \text{max_IO_cost} = N_\text{pages_fetched} \times \text{spc_random_page_cost}
   $$
 
-- If `loop_count` > 1:
+  If `loop_count` > 1:
+
   $$
   \small
-  \text{max_IO_cost} = N_\text{pages_fetched} \times \text{spc_random_page_cost} \div \text{loop_count}
+  \text{max_IO_cost} = \frac{N_\text{pages_fetched} \times \text{spc_random_page_cost}}{\text{loop_count}}
   $$
 
-2. Exactly Correlated Index Ordering:
+- `min_IO_cost`: Exactly Correlated Index Ordering with Table Ordering:
 
-- The number of pages fetched is exactly selectivity \* table_size.
+  $\small N_\text{pages_fetched}$ is exactly $\small \text{indexSelectivity} \times \table{table_size}$. If it's an index-only scan, PostgreSQL use the measured fraction of the entire heap that is all-visible. Therefore, $\small N_\text{pages_fetched}$ is $\small N_\text{pages_fetched} = \ceil N_\text{pages_fetched} \times (1.0 - \text{allvisfrac})$.
+
+  In the case of `loop_count` > 1, PostgreSQL assumes all the fetches are random.
+
+  $$
+  \small
+  \text{min_IO_cost} = \frac{N_\text{pages_fetched} \times \text{spc_random_page_cost}}{\text{loop_count}}
+  $$
+
+  Else, PostgreSQL considers three cases:
 
 - If `pages_fetched` > 1:
 
   $$
   \small
-  \text{min_IO_cost} = \text{spc_random_page_cost} + N_\text{pages_fetched} \times \text{spc_seq_page_cost}
+  \text{min_IO_cost} = \text{spc_random_page_cost} + (N_\text{pages_fetched} - 1) \times \text{spc_seq_page_cost}
   $$
 
 - If `pages_fetched` = 1:
@@ -258,32 +263,34 @@ To estimate the number of main-table pages fetched and compute the I/O cost, Pos
   \text{min_IO_cost} = 0
   $$
 
-- If `loop_count` > 1, PostgreSQL assumes all the fetches are random.
-  $$
-  \small
-  \text{min_IO_cost} = N_\text{pages_fetched} \times \text{spc_random_page_cost} \div \text{loop_count}
-  $$
-
-3. Partially-Correlated Index Ordering:
-
-- Interpolates linearly between the estimates based on the correlation squared (csquared).
-
-4. Index-Only Scan:
-   - Reduces the estimated number of heap fetches accordingly. Uses the fraction of the heap that is all-visible.
-
 `loop_count` is the number of repetitions of the indexscan to factor into estimates of caching behavior.
 
-Then interpolate based on estimated index order correlation to get total disk I/O cost for main table accesses.
+Then, PostgreSQL interpolates based on estimated index order correlation.
 
-The run cost includes disk costs and cpu costs. It is calculated as:
+$$
+\small
+\text{disk_run_cost} = \text{max_IO_cost} + \text{indexCorrelation}^2 (\text{min_IO_cost} - \text{max_IO_cost})
+$$
 
-`cpu_per_tuple` is the sum of `cpu_tuple_cost` and `qpqual_cost` per tuple.
+Second, CPU run cost is calculated as:
+
+$$
+\small
+\text{cpu_run_cost} = \text{cpu_per_tuple} \times N_{\text{tuples}} + \text{tlist_eval_per_row} \times N_{\text{output_rows}}
+$$
 
 If parallelism is used, the CPU cost and the number of output row is divided among all workers:
 
 $$
 \small
 \text{cpu_run_cost} = \text{cpu_run_cost} \div \text{paraellel_divisor}
+$$
+
+Finally, run cost is calculated as:
+
+$$
+\small
+\text{run_cost} = \text{indexTotalCost} - \text{indexStartupCost} + \text{disk_run_cost} + \text{cpu_run_cost}
 $$
 
 ## [Nested Loop Join]()
