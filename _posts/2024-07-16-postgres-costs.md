@@ -90,7 +90,7 @@ If parallelism is used, the CPU cost and the number of output row is divided amo
 
 $$
 \small
-\text{cpu_run_cost} = \text{cpu_run_cost} \div \text{paraellel_divisor, } N_{\text{output_rows}} = N_{\text{output_rows}} \div \text{paraellel_divisor}
+\text{cpu_run_cost} = \frac{\text{cpu_run_cost}}{\text{parallel_divisor}} \text{, } N_{\text{output_rows}} = \frac{N_{\text{output_rows}}}{\text{parallel_divisor}}
 $$
 
 The disk run cost is the cost of reading the pages from disk:
@@ -242,26 +242,26 @@ First, to estimate the number of main-table pages fetched and compute the I/O co
 
   Else, PostgreSQL considers three cases:
 
-- If `pages_fetched` > 1:
+  - If `pages_fetched` > 1:
 
-  $$
-  \small
-  \text{min_IO_cost} = \text{spc_random_page_cost} + (N_\text{pages_fetched} - 1) \times \text{spc_seq_page_cost}
-  $$
+    $$
+    \small
+    \text{min_IO_cost} = \text{spc_random_page_cost} + (N_\text{pages_fetched} - 1) \times \text{spc_seq_page_cost}
+    $$
 
-- If `pages_fetched` = 1:
+  - If `pages_fetched` = 1:
 
-  $$
-  \small
-  \text{min_IO_cost} = \text{spc_random_page_cost}
-  $$
+    $$
+    \small
+    \text{min_IO_cost} = \text{spc_random_page_cost}
+    $$
 
-- If `pages_fetched` < 0:
+  - If `pages_fetched` < 0:
 
-  $$
-  \small
-  \text{min_IO_cost} = 0
-  $$
+    $$
+    \small
+    \text{min_IO_cost} = 0
+    $$
 
 `loop_count` is the number of repetitions of the indexscan to factor into estimates of caching behavior.
 
@@ -269,7 +269,7 @@ Then, PostgreSQL interpolates based on estimated index order correlation.
 
 $$
 \small
-\text{disk_run_cost} = \text{max_IO_cost} + \text{indexCorrelation}^2 (\text{min_IO_cost} - \text{max_IO_cost})
+\text{disk_run_cost} = \text{max_IO_cost} + \text{indexCorrelation}^2 \times (\text{min_IO_cost} - \text{max_IO_cost})
 $$
 
 Second, CPU run cost is calculated as:
@@ -283,7 +283,7 @@ If parallelism is used, the CPU cost and the number of output row is divided amo
 
 $$
 \small
-\text{cpu_run_cost} = \text{cpu_run_cost} \div \text{paraellel_divisor}
+\text{cpu_run_cost} = \frac{\text{cpu_run_cost}}{\text{parallel_divisor}}
 $$
 
 Finally, run cost is calculated as:
@@ -291,6 +291,26 @@ Finally, run cost is calculated as:
 $$
 \small
 \text{run_cost} = \text{indexTotalCost} - \text{indexStartupCost} + \text{disk_run_cost} + \text{cpu_run_cost}
+$$
+
+## [Bitmap Heap Scan](https://github.com/postgres/postgres/blob/master/src/backend/optimizer/path/costsize.c#L998)
+
+Determines and returns the cost of _scanning a relation using a bitmap index-then-heap plan_.
+
+In cost estimation of bitmap heap scans, the `compute_bitmap_pages` function is used. This function computes the number of pages fetched from heap in bitmap heap scan. It returns several values: `indexTotalCost`, `tuples_fetched`, and `pages_fetched`.
+
+The total cost of a bitmap heap scan is calculated as follows:
+
+$$
+\small
+\text{total_cost} = \text{startup_cost} + \text{run_cost}
+$$
+
+The startup cost includes the cost of obtaining the bitmap, evaluating the `WHERE` clause, and processing the target list expressions. It is calculated as:
+
+$$
+\small
+\text{startup_cost} = \text{indexTotalCost} + \text{qpqual_startup_cost} + \text{tlist_eval_startup_cost}
 $$
 
 ## [Nested Loop Join]()
