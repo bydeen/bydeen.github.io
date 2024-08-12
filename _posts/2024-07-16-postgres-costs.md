@@ -215,7 +215,7 @@ First, to estimate the number of main-table pages fetched and compute the I/O co
 
 - `max_IO_cost`: Uncorrelated Index Ordering with Table Ordering
 
-  To compute $\small N_\text{pages_fetched}$, [approximation method by Mackert and Lohman](https://dl.acm.org/doi/pdf/10.1145/68012.68016) is used, which is defined in [index_pages_fetched] function(https://github.com/postgres/postgres/blob/master/src/backend/optimizer/path/costsize.c#L859). If it's an index-only scan, PostgreSQL use the measured fraction of the entire heap that is all-visible. Therefore, $\small N_\text{pages_fetched}$ is $\small N_\text{pages_fetched} = \ceil N_\text{pages_fetched} \times (1.0 - \text{allvisfrac})$. Then, `spc_random_page_cost` is charged per page fetched.
+  To compute $\small N_\text{pages_fetched}$, [approximation method by Mackert and Lohman](https://dl.acm.org/doi/pdf/10.1145/68012.68016) is used, which is defined in [index_pages_fetched] function(https://github.com/postgres/postgres/blob/master/src/backend/optimizer/path/costsize.c#L859). If it's an index-only scan, PostgreSQL use the measured fraction of the entire heap that is all-visible. Therefore, $\small N_\text{pages_fetched}$ is $\small N_\text{pages_fetched} = \ceil{N_\text{pages_fetched} \times (1.0 - \text{allvisfrac})}$. Then, `spc_random_page_cost` is charged per page fetched.
 
   $$
   \small
@@ -231,7 +231,7 @@ First, to estimate the number of main-table pages fetched and compute the I/O co
 
 - `min_IO_cost`: Exactly Correlated Index Ordering with Table Ordering:
 
-  $\small N_\text{pages_fetched}$ is exactly $\small \text{indexSelectivity} \times \table{table_size}$. If it's an index-only scan, PostgreSQL use the measured fraction of the entire heap that is all-visible. Therefore, $\small N_\text{pages_fetched}$ is $\small N_\text{pages_fetched} = \ceil N_\text{pages_fetched} \times (1.0 - \text{allvisfrac})$.
+  $\small N_\text{pages_fetched}$ is exactly $\small \text{indexSelectivity} \times \text{table_size}$. If it's an index-only scan, PostgreSQL use the measured fraction of the entire heap that is all-visible. Therefore, $\small N_\text{pages_fetched}$ is $\small N_\text{pages_fetched} = \ceil{N_\text{pages_fetched} \times (1.0 - \text{allvisfrac})}$.
 
   In the case of `loop_count` > 1, PostgreSQL assumes all the fetches are random.
 
