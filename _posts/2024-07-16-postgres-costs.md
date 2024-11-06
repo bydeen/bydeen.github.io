@@ -55,8 +55,6 @@ The foundational concepts for this analysis were derived from [The Internals of 
 - `qpqual_cost` : CPU cost of evaluating the `WHERE` clause.
 - `tlist_eval_cost` : Cost of evaluating the target list expressions. The target list defines the result of the query. More details about target list can be found [here](https://www.postgresql.org/docs/current/querytree.html).
 
-<!-- For simplication, this post assumes no parallelism is used, that is, only one worker is assigned. -->
-
 If a operator is disabled (i.e., `enable_xxx` is not true), PostgreSQL adds a `disable_cost` (set to 1.0e10) to the startup cost. This effectively prevents the optimizer from selecting the operator.
 
 ## [Sequential Scan](https://github.com/postgres/postgres/blob/master/src/backend/optimizer/path/costsize.c#L276)
